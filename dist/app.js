@@ -15,8 +15,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const db_1 = __importDefault(require("./db"));
 const decimal_js_1 = __importDefault(require("decimal.js"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const crypto_1 = require("crypto");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
+const importacoes = new Map();
+const TEMPO_EXPIRACAO = 30 * 60 * 1000;
+const LIMITE_DETALHES = 100;
+const LIMITE_IMPORTACOES = 20;
+// Remove resultados expirados a cada minuto.
+setInterval(() => {
+    for (const [id, resultado] of importacoes) {
+        if (resultado.status !== "processando" &&
+            resultado.expiraEm <= Date.now()) {
+            importacoes.delete(id);
+        }
+    }
+}, 60 * 1000).unref();
 // Lista todas as simulações.
 app.get("/simulacoes", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -26,6 +42,146 @@ app.get("/simulacoes", (req, res) => __awaiter(void 0, void 0, void 0, function*
     catch (erro) {
         console.error(erro);
         res.status(500).json({ erro: "Erro ao listar simulações." });
+    }
+}));
+app.post("/clientes/importar", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // Limpa os resultados expirados antes de conferir o limite.
+    for (const [id, resultado] of importacoes) {
+        if (resultado.status !== "processando" &&
+            resultado.expiraEm <= Date.now()) {
+            importacoes.delete(id);
+        }
+    }
+    if (importacoes.size >= LIMITE_IMPORTACOES) {
+        res.status(429).json({
+            erro: "Limite de importações em memória atingido. Aguarde a expiração."
+        });
+        return;
+    }
+    const importacaoId = (0, crypto_1.randomUUID)();
+    const registro = {
+        id: importacaoId,
+        status: "processando",
+        expiraEm: 0,
+        totais: {
+            inseridos: 0,
+            duplicados: 0,
+            invalidos: 0
+        },
+        detalhes: {
+            inseridos: [],
+            duplicados: [],
+            invalidos: []
+        }
+    };
+    importacoes.set(importacaoId, registro);
+    let inseridos = 0;
+    let duplicados = 0;
+    let invalidos = 0;
+    try {
+        for (let i = 1; i <= 10; i++) {
+            const caminho = path_1.default.join(__dirname, "..", "dados", `pessoas_${i}.csv`);
+            const conteudo = fs_1.default.readFileSync(caminho, "utf8");
+            const linhas = conteudo.split(/\r?\n/);
+            // Remove o cabeçalho.
+            linhas.shift();
+            for (const [indice, linha] of linhas.entries()) {
+                if (linha.trim() === "")
+                    continue;
+                const dados = linha.split(",");
+                const detalhe = {
+                    arquivo: `pessoas_${i}.csv`,
+                    linha: indice + 2,
+                    dados
+                };
+                if (dados.length !== 6) {
+                    invalidos++;
+                    if (registro.detalhes.invalidos.length < LIMITE_DETALHES) {
+                        registro.detalhes.invalidos.push(Object.assign(Object.assign({}, detalhe), { motivo: "Quantidade de campos diferente de seis." }));
+                    }
+                    continue;
+                }
+                const pessoa = {
+                    nome: dados[0].trim(),
+                    email: dados[1].trim(),
+                    cidade: dados[2].trim(),
+                    profissao: dados[3].trim(),
+                    idade: dados[4].trim(),
+                    cpf: dados[5].trim()
+                };
+                const idade = pessoa.idade === ""
+                    ? null
+                    : Number(pessoa.idade);
+                const cpfInvalido = !/^\d{11}$/.test(pessoa.cpf);
+                const idadeInvalida = idade !== null && (!Number.isInteger(idade) ||
+                    idade < 0 ||
+                    idade > 2147483647);
+                if (cpfInvalido || idadeInvalida) {
+                    invalidos++;
+                    if (registro.detalhes.invalidos.length < LIMITE_DETALHES) {
+                        const motivos = [];
+                        if (cpfInvalido) {
+                            motivos.push("CPF deve conter exatamente 11 números.");
+                        }
+                        if (idadeInvalida) {
+                            motivos.push("Idade deve ser um inteiro entre 0 e 2147483647.");
+                        }
+                        registro.detalhes.invalidos.push(Object.assign(Object.assign({}, detalhe), { motivo: motivos.join(" ") }));
+                    }
+                    continue;
+                }
+                const resultado = yield db_1.default.query(`INSERT INTO clientes (
+            nome, email, cidade, profissao,
+            idade, documento, tipo_pessoa
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (documento) DO NOTHING`, [
+                    pessoa.nome || null,
+                    pessoa.email || null,
+                    pessoa.cidade || null,
+                    pessoa.profissao || null,
+                    idade,
+                    pessoa.cpf,
+                    "PF"
+                ]);
+                if (resultado.rowCount === 1) {
+                    inseridos++;
+                    if (registro.detalhes.inseridos.length < LIMITE_DETALHES) {
+                        registro.detalhes.inseridos.push(detalhe);
+                    }
+                }
+                else {
+                    duplicados++;
+                    if (registro.detalhes.duplicados.length < LIMITE_DETALHES) {
+                        registro.detalhes.duplicados.push(Object.assign(Object.assign({}, detalhe), { motivo: "Documento já cadastrado." }));
+                    }
+                }
+            }
+        }
+        registro.status = "concluida";
+        res.status(200).json({
+            mensagem: "Importação concluída.",
+            importacao_id: importacaoId,
+            inseridos,
+            duplicados,
+            invalidos
+        });
+    }
+    catch (erro) {
+        console.error(erro);
+        registro.status = "interrompida";
+        res.status(500).json({
+            erro: "Importação interrompida.",
+            mensagem: "Os registros já inseridos permanecem no banco.",
+            importacao_id: importacaoId,
+            inseridos,
+            duplicados,
+            invalidos
+        });
+    }
+    finally {
+        registro.totais = { inseridos, duplicados, invalidos };
+        registro.expiraEm = Date.now() + TEMPO_EXPIRACAO;
     }
 }));
 // Cadastra uma simulação.
@@ -149,4 +305,22 @@ app.get("/simulacoes/cpf/:cpf", (req, res) => __awaiter(void 0, void 0, void 0, 
         res.status(500).json({ erro: "Erro ao buscar por CPF." });
     }
 }));
+app.get("/clientes/importacoes/:id", (req, res) => {
+    const registro = importacoes.get(req.params.id);
+    if (!registro) {
+        res.status(404).json({
+            erro: "Importação não encontrada ou resultado já removido."
+        });
+        return;
+    }
+    if (registro.status !== "processando" &&
+        registro.expiraEm <= Date.now()) {
+        importacoes.delete(registro.id);
+        res.status(404).json({
+            erro: "Resultado da importação expirado."
+        });
+        return;
+    }
+    res.json(Object.assign(Object.assign({}, registro), { limite_detalhes_por_categoria: LIMITE_DETALHES }));
+});
 exports.default = app;
