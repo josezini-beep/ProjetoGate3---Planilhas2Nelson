@@ -50,7 +50,6 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
-
 // Lista todas as simulações.
 app.get("/simulacoes", async (req, res) => {
   try {
@@ -258,7 +257,7 @@ app.post("/clientes/importar", async (req, res) => {
 app.post("/simulacoes", async (req, res) => {
   const {
     uc,
-    cpf,
+    concessionaria,
     encargos,
     impostos,
     kwh,
@@ -278,8 +277,8 @@ app.post("/simulacoes", async (req, res) => {
     typeof uc !== "string" ||
     uc.trim().length === 0 ||
     uc.length > 30 ||
-    typeof cpf !== "string" ||
-    !/^\d{11}$/.test(cpf) ||
+    typeof concessionaria !== "string" ||
+    concessionaria.trim().length === 0 ||
     !valores.every(
       (valor) => typeof valor === "number" && Number.isFinite(valor)
     ) ||
@@ -324,35 +323,51 @@ app.post("/simulacoes", async (req, res) => {
       .dividedBy(100)
       .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
+
     // Projeção com a mesma economia nos 12 meses.
     const economiaAnual = economiaMensal.times(12);
 
-    if (economiaAnual.gt("9999999999.99")) {
-      res.status(400).json({ erro: "Economia acima do limite permitido." });
-      return;
-    }
+if (economiaAnual.gt("9999999999.99")) {
+  res.status(400).json({
+    erro: "Economia acima do limite permitido."
+  });
+  return;
+}
+const resultado = await pool.query(
+  `INSERT INTO simulacoes (
+    uc, concessionaria, encargos, impostos, kwh, valor_kwh,
+    desconto_percentual, economia_mensal, economia_anual
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 
-    const resultado = await pool.query(
-      `INSERT INTO simulacoes (
-        uc, cpf, encargos, impostos, kwh, valor_kwh,
-        desconto_percentual, economia_mensal, economia_anual
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *`,
-      [
-        uc.trim(),
-        cpf,
-        encargos,
-        impostos,
-        kwh,
-        valor_kwh,
-        desconto_percentual,
-        economiaMensal.toFixed(2),
-        economiaAnual.toFixed(2)
-      ]
-    );
+  ON CONFLICT (
+    TRIM(uc),
+    LOWER(TRIM(concessionaria))
+  )
+  DO UPDATE SET
+    encargos = EXCLUDED.encargos,
+    impostos = EXCLUDED.impostos,
+    kwh = EXCLUDED.kwh,
+    valor_kwh = EXCLUDED.valor_kwh,
+    desconto_percentual = EXCLUDED.desconto_percentual,
+    economia_mensal = EXCLUDED.economia_mensal,
+    economia_anual = EXCLUDED.economia_anual
 
-    res.status(201).json(resultado.rows[0]);
+  RETURNING *`,
+  [
+    uc.trim(),
+    concessionaria.trim(),
+    encargos,
+    impostos,
+    kwh,
+    valor_kwh,
+    desconto_percentual,
+    economiaMensal.toFixed(2),
+    economiaAnual.toFixed(2)
+  ]
+);
+
+    res.status(200).json(resultado.rows[0]);
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: "Erro ao cadastrar simulação." });
@@ -441,5 +456,147 @@ app.get("/clientes/importacoes/:id", (req, res) => {
     ...registro,
     limite_detalhes_por_categoria: LIMITE_DETALHES
   });
+});
+
+// Edita uma simulação pelo ID.
+app.put("/simulacoes/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0 || id > 2147483647) {
+    res.status(400).json({ erro: "ID inválido." });
+    return;
+  }
+
+  const {
+    uc,
+    concessionaria,
+    encargos,
+    impostos,
+    kwh,
+    valor_kwh,
+    desconto_percentual
+  } = req.body ?? {};
+
+  const valores = [
+    encargos,
+    impostos,
+    kwh,
+    valor_kwh,
+    desconto_percentual
+  ];
+
+  if (
+    typeof uc !== "string" ||
+    uc.trim().length === 0 ||
+    uc.length > 30 ||
+    typeof concessionaria !== "string" ||
+    concessionaria.trim().length === 0 ||
+    !valores.every(
+      (valor) => typeof valor === "number" && Number.isFinite(valor)
+    ) ||
+    encargos < 0 ||
+    impostos < 0 ||
+    kwh <= 0 ||
+    valor_kwh <= 0 ||
+    desconto_percentual < 0 ||
+    desconto_percentual > 100
+  ) {
+    res.status(400).json({ erro: "Dados inválidos." });
+    return;
+  }
+
+  const limites = [
+    { valor: encargos, casas: 2, maximo: "9999999999.99" },
+    { valor: impostos, casas: 2, maximo: "9999999999.99" },
+    { valor: kwh, casas: 3, maximo: "999999999.999" },
+    { valor: valor_kwh, casas: 6, maximo: "999999.999999" },
+    { valor: desconto_percentual, casas: 2, maximo: "100" }
+  ];
+
+  if (
+    limites.some(({ valor, casas, maximo }) => {
+      const decimal = new Decimal(valor);
+
+      return decimal.decimalPlaces() > casas || decimal.gt(maximo);
+    })
+  ) {
+    res.status(400).json({
+      erro: "Valor acima do limite ou com casas decimais demais."
+    });
+    return;
+  }
+
+  try {
+    const valorEnergia = new Decimal(kwh).times(valor_kwh);
+
+    const economiaMensal = valorEnergia
+      .times(desconto_percentual)
+      .dividedBy(100)
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
+    const economiaAnual = economiaMensal.times(12);
+
+    if (economiaAnual.gt("9999999999.99")) {
+      res.status(400).json({
+        erro: "Economia acima do limite permitido."
+      });
+      return;
+    }
+
+    const resultado = await pool.query(
+      `UPDATE simulacoes
+       SET
+         uc = $1,
+         concessionaria = $2,
+         encargos = $3,
+         impostos = $4,
+         kwh = $5,
+         valor_kwh = $6,
+         desconto_percentual = $7,
+         economia_mensal = $8,
+         economia_anual = $9
+       WHERE id = $10
+       RETURNING *`,
+      [
+        uc.trim(),
+        concessionaria.trim(),
+        encargos,
+        impostos,
+        kwh,
+        valor_kwh,
+        desconto_percentual,
+        economiaMensal.toFixed(2),
+        economiaAnual.toFixed(2),
+        id
+      ]
+    );
+
+    if (resultado.rows.length === 0) {
+      res.status(404).json({
+        erro: "Simulação não encontrada."
+      });
+      return;
+    }
+
+    res.status(200).json(resultado.rows[0]);
+  } catch (erro) {
+    if (
+      typeof erro === "object" &&
+      erro !== null &&
+      "code" in erro &&
+      erro.code === "23505"
+    ) {
+      res.status(409).json({
+        erro: "Já existe outra simulação para essa UC e concessionária."
+      });
+      return;
+    }
+
+    console.error(erro);
+
+    res.status(500).json({
+      erro: "Erro ao editar simulação."
+    });
+  }
 });
 export default app;
