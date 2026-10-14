@@ -54,7 +54,7 @@ setInterval(() => {
 app.get("/simulacoes", async (req, res) => {
   try {
     const resultado = await pool.query(
-      "SELECT * FROM simulacoes ORDER BY id"
+      "SELECT * FROM simulacoes WHERE apagado = FALSE ORDER BY id",
     );
 
     res.json(resultado.rows);
@@ -352,8 +352,8 @@ const resultado = await pool.query(
     desconto_percentual = EXCLUDED.desconto_percentual,
     economia_mensal = EXCLUDED.economia_mensal,
     economia_anual = EXCLUDED.economia_anual
-
-  RETURNING *`,
+    WHERE simulacoes.apagado = FALSE
+    RETURNING *`,
   [
     uc.trim(),
     concessionaria.trim(),
@@ -366,7 +366,12 @@ const resultado = await pool.query(
     economiaAnual.toFixed(2)
   ]
 );
-
+  if (resultado.rows.length === 0) {
+  res.status(409).json({
+    erro: "Existe uma simulação apagada para essa UC e concessionária. Restaure-a antes de atualizar."
+  });
+  return;
+}
     res.status(200).json(resultado.rows[0]);
   } catch (erro) {
     console.error(erro);
@@ -385,7 +390,7 @@ app.get("/simulacoes/:id", async (req, res) => {
 
   try {
     const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE id = $1",
+      "SELECT * FROM simulacoes WHERE id = $1 AND apagado = FALSE",
       [id]
     );
 
@@ -405,7 +410,7 @@ app.get("/simulacoes/:id", async (req, res) => {
 app.get("/simulacoes/uc/:uc", async (req, res) => {
   try {
     const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE uc = $1 ORDER BY id",
+      "SELECT * FROM simulacoes WHERE uc = $1 AND apagado = FALSE ORDER BY id",
       [req.params.uc]
     );
 
@@ -420,7 +425,7 @@ app.get("/simulacoes/uc/:uc", async (req, res) => {
 app.get("/simulacoes/cpf/:cpf", async (req, res) => {
   try {
     const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE cpf = $1 ORDER BY id",
+      "SELECT * FROM simulacoes WHERE cpf = $1 AND apagado = FALSE ORDER BY id",
       [req.params.cpf]
     );
 
@@ -555,7 +560,7 @@ app.put("/simulacoes/:id", async (req, res) => {
          desconto_percentual = $7,
          economia_mensal = $8,
          economia_anual = $9
-       WHERE id = $10
+       WHERE id = $10 AND apagado = FALSE
        RETURNING *`,
       [
         uc.trim(),
@@ -599,4 +604,41 @@ app.put("/simulacoes/:id", async (req, res) => {
     });
   }
 });
+
+app.delete("/simulacoes/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0 || id > 2147483647) {
+    res.status(400).json({ erro: "ID inválido." });
+    return;
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE simulacoes
+       SET apagado = TRUE
+       WHERE id = $1 AND apagado = FALSE
+       RETURNING id`,
+      [id]
+    );
+
+    if (resultado.rows.length === 0) {
+      res.status(404).json({
+        erro: "Simulação não encontrada ou já apagada."
+      });
+      return;
+    }
+
+    res.status(200).json({
+      mensagem: "Simulação marcada como apagada.",
+      id: resultado.rows[0].id
+    });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({
+      erro: "Erro ao apagar simulação."
+    });
+  }
+});
+
 export default app;
