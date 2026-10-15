@@ -15,7 +15,6 @@ type DadosSimulacao = {
 export const criarSimulacaoService = {
   create: async (dados: DadosSimulacao) => {
     
-
   const {
     uc,
     concessionaria,
@@ -68,9 +67,9 @@ export const criarSimulacaoService = {
       return decimal.decimalPlaces() > casas || decimal.gt(maximo);
     })
   ) {
-    throw new Error
+    throw new ErroHttp
     (
-      "Valor acima do limite ou com casas decimais demais."
+      "Valor acima do limite ou com casas decimais demais.",401
     );
     
   }
@@ -89,8 +88,8 @@ export const criarSimulacaoService = {
     const economiaAnual = economiaMensal.times(12);
 
 if (economiaAnual.gt("9999999999.99")) {
-  throw new Error(
-    "Economia acima do limite permitido."
+  throw new ErroHttp(
+    "Economia acima do limite permitido.",403
   );
 }
 
@@ -128,8 +127,8 @@ const resultado = await pool.query(
   ]
 );
   if (resultado.rows.length === 0) {
-  throw new Error(
-    "Existe uma simulação apagada para essa UC e concessionária. Restaure-a antes de atualizar."
+  throw new ErroHttp(
+    "Existe uma simulação apagada para essa UC e concessionária. Restaure-a antes de atualizar.",402
   );
 }
     return resultado.rows[0];
