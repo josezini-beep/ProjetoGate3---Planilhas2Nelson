@@ -1,4 +1,4 @@
-import { criarSimulacaoService } from "../../services/simulacoes.service";
+import { criarSimulacaoService } from "../../services/simulacoes/simulacoes.service";
 import { Request, Response } from "express";
 import  ErroHttp  from "../../errors/erro-http";
 

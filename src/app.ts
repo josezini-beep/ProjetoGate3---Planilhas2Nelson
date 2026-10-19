@@ -5,10 +5,12 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { simulacoesController } from "./controllers/simulacoes/criar_simulacao";
+import clientesController from "./controllers/clientes/clientes.controller";
 
 const app = express();
 
 app.use(express.json());
+app.use(clientesController);
 
 type DetalheImportacao = {
   arquivo: string;

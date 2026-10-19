@@ -1,6 +1,6 @@
-import pool from "../db";
+import pool from "../../db";
 import Decimal from "decimal.js";
-import ErroHttp from "../errors/erro-http";
+import ErroHttp from "../../errors/erro-http";
 
 type DadosSimulacao = {
   uc: string;
