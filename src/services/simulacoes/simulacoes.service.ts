@@ -333,6 +333,7 @@ export async function buscarSimulacoesPorCpf(cpf: string) {
 
   return resultado.rows;
 }
+
 export async function excluirSimulacao(id: number) {
   const resultado = await pool.query(
     `UPDATE simulacoes

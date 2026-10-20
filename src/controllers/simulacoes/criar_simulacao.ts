@@ -76,7 +76,7 @@ export const simulacoesController = {
             erro: "Erro ao buscar simulação."
         });
         }
-     },
+    },
     create: async (req: Request, res: Response) => {
         console.log("Controller executado!");
         try {
