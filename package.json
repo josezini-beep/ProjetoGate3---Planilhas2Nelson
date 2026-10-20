@@ -27,6 +27,7 @@
     "start": "node dist/server.js",
     "watch": "tsc -w",
     "build": "tsc -p tsconfig.json",
-    "test": "jest"
+    "test": "jest",
+    "test:watch "jest"
   }
 }

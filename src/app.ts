@@ -1,6 +1,4 @@
 import express from "express";
-import pool from "./db";
-import Decimal from "decimal.js";
 import { simulacoesController } from "./controllers/simulacoes/criar_simulacao";
 import { clientesController } from "./controllers/clientes/clientes.controller";
 
