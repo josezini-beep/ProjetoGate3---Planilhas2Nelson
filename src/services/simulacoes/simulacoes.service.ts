@@ -324,3 +324,27 @@ export async function editarSimulacao(id: number, dados: any) {
 
   return resultado.rows[0];
 }
+
+export async function buscarSimulacoesPorCpf(cpf: string) {
+  const resultado = await pool.query(
+    "SELECT * FROM simulacoes WHERE cpf = $1 AND apagado = FALSE ORDER BY id",
+    [cpf]
+  );
+
+  return resultado.rows;
+}
+export async function excluirSimulacao(id: number) {
+  const resultado = await pool.query(
+    `UPDATE simulacoes
+     SET apagado = TRUE
+     WHERE id = $1 AND apagado = FALSE
+     RETURNING id`,
+    [id]
+  );
+
+  if (resultado.rows.length === 0) {
+    return null;
+  }
+
+  return resultado.rows[0];
+}
