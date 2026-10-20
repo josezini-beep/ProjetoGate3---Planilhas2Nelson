@@ -1,56 +1,12 @@
 import express from "express";
 import pool from "./db";
 import Decimal from "decimal.js";
-import fs from "fs";
-import path from "path";
-import { randomUUID } from "crypto";
 import { simulacoesController } from "./controllers/simulacoes/criar_simulacao";
 import { clientesController } from "./controllers/clientes/clientes.controller";
 
 const app = express();
 
 app.use(express.json());
-
-type DetalheImportacao = {
-  arquivo: string;
-  linha: number;
-  dados: string[];
-  motivo?: string;
-};
-
-type ResultadoImportacao = {
-  id: string;
-  status: "processando" | "concluida" | "interrompida";
-  expiraEm: number;
-  totais: {
-    inseridos: number;
-    duplicados: number;
-    invalidos: number;
-  };
-  detalhes: {
-    inseridos: DetalheImportacao[];
-    duplicados: DetalheImportacao[];
-    invalidos: DetalheImportacao[];
-  };
-};
-
-const importacoes = new Map<string, ResultadoImportacao>();
-
-const TEMPO_EXPIRACAO = 30 * 60 * 1000;
-const LIMITE_DETALHES = 100;
-const LIMITE_IMPORTACOES = 20;
-
-// Remove resultados expirados a cada minuto.
-setInterval(() => {
-  for (const [id, resultado] of importacoes) {
-    if (
-      resultado.status !== "processando" &&
-      resultado.expiraEm <= Date.now()
-    ) {
-      importacoes.delete(id);
-    }
-  }
-}, 60 * 1000).unref();
 
 // Lista todas as simulações.
 app.get("/simulacoes", async (req, res) => {
@@ -127,34 +83,6 @@ app.get("/simulacoes/cpf/:cpf", async (req, res) => {
     console.error(erro);
     res.status(500).json({ erro: "Erro ao buscar por CPF." });
   }
-});
-
-app.get("/clientes/importacoes/:id", (req, res) => {
-  const registro = importacoes.get(req.params.id);
-
-  if (!registro) {
-    res.status(404).json({
-      erro: "Importação não encontrada ou resultado já removido."
-    });
-    return;
-  }
-
-  if (
-    registro.status !== "processando" &&
-    registro.expiraEm <= Date.now()
-  ) {
-    importacoes.delete(registro.id);
-
-    res.status(404).json({
-      erro: "Resultado da importação expirado."
-    });
-    return;
-  }
-
-  res.json({
-    ...registro,
-    limite_detalhes_por_categoria: LIMITE_DETALHES
-  });
 });
 
 // Edita uma simulação pelo ID.
@@ -335,13 +263,17 @@ app.delete("/simulacoes/:id", async (req, res) => {
   }
 });
 
+// Importar lista de clientes
+
 app.post(
   "/clientes/importar",
   clientesController.importar
 );
 
+// consultar um cliente importado
+
 app.get(
   "/clientes/importacoes/:id",
   clientesController.consultarImportacao
 );
-export default app; 
+export default app;
