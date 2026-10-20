@@ -1,8 +1,20 @@
-import { criarSimulacaoService } from "../../services/simulacoes/simulacoes.service";
+import { criarSimulacaoService, listarSimulacoes } from "../../services/simulacoes/simulacoes.service";
 import { Request, Response } from "express";
 import  ErroHttp  from "../../errors/erro-http";
 
+
 export const simulacoesController = {
+    listar: async (_req: Request, res: Response) => {
+        try {
+            const resultado = await listarSimulacoes();
+            return res.json(resultado);
+        } catch (erro) {
+            console.error(erro);
+            return res.status(500).json({
+            erro: "Erro ao listar simulações."
+            });
+        }
+    },
     create: async (req: Request, res: Response) => {
         console.log("Controller executado!");
         try {

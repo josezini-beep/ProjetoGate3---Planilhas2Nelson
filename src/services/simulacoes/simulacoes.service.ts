@@ -166,3 +166,12 @@ export async function listarSimulacoes() {
 
   return resultado.rows;
 }
+
+export async function buscarSimulacaoPorId(id: number) {
+  const resultado = await pool.query(
+    "SELECT * FROM simulacoes WHERE id = $1 AND apagado = FALSE",
+    [id]
+  );
+
+  return resultado.rows[0] ?? null;
+}

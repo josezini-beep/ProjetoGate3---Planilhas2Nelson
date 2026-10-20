@@ -9,19 +9,7 @@ const app = express();
 app.use(express.json());
 
 // Lista todas as simulações.
-app.get("/simulacoes", async (req, res) => {
-  try {
-    const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE apagado = FALSE ORDER BY id",
-    );
-
-    res.json(resultado.rows);
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro ao listar simulações." });
-  }
-});
-
+app.get("/simulacoes", simulacoesController.listar);
 
 //Cadastra uma simulação.
 
