@@ -16,32 +16,8 @@ app.get("/simulacoes", simulacoesController.listar);
 app.post("/simulacoes", simulacoesController.create);
 
 
-// Busca pelo ID.
-app.get("/simulacoes/:id", async (req, res) => {
-  const id = Number(req.params.id);
-
-  if (!Number.isInteger(id) || id <= 0 || id > 2147483647) {
-    res.status(400).json({ erro: "ID inválido." });
-    return;
-  }
-
-  try {
-    const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE id = $1 AND apagado = FALSE",
-      [id]
-    );
-
-    if (resultado.rows.length === 0) {
-      res.status(404).json({ erro: "Simulação não encontrada." });
-      return;
-    }
-
-    res.json(resultado.rows[0]);
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro ao buscar simulação." });
-  }
-});
+// Busca uma simulação pelo ID.
+app.get("/simulacoes/:id", simulacoesController.buscarPorId);
 
 // Lista as simulações de uma UC.
 app.get("/simulacoes/uc/:uc", async (req, res) => {
