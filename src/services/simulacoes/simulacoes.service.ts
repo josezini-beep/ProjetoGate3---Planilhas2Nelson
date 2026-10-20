@@ -2,6 +2,7 @@ import pool from "../../db";
 import Decimal from "decimal.js";
 import ErroHttp from "../../errors/erro-http";
 
+
 type DadosSimulacao = {
   uc: string;
   concessionaria: string;
@@ -174,4 +175,152 @@ export async function buscarSimulacaoPorId(id: number) {
   );
 
   return resultado.rows[0] ?? null;
+}
+
+export async function buscarSimulacoesPorUc(uc: string) {
+  const resultado = await pool.query(
+    "SELECT * FROM simulacoes WHERE uc = $1 AND apagado = FALSE ORDER BY id",
+    [uc]
+  );
+
+  return resultado.rows;
+}
+
+export async function editarSimulacao(id: number, dados: any) {
+  const {
+    uc,
+    concessionaria,
+    encargos,
+    impostos,
+    kwh,
+    valor_kwh,
+    desconto_percentual
+  } = dados ?? {};
+
+  const valores = [
+    encargos,
+    impostos,
+    kwh,
+    valor_kwh,
+    desconto_percentual
+  ];
+
+  if (
+    typeof uc !== "string" ||
+    uc.trim().length === 0 ||
+    uc.length > 30 ||
+    typeof concessionaria !== "string" ||
+    concessionaria.trim().length === 0 ||
+    !valores.every(
+      (valor) => typeof valor === "number" && Number.isFinite(valor)
+    ) ||
+    encargos < 0 ||
+    impostos < 0 ||
+    kwh <= 0 ||
+    valor_kwh <= 0 ||
+    desconto_percentual < 0 ||
+    desconto_percentual > 100
+  ) {
+    throw Object.assign(
+      new Error("Dados inválidos."),
+      { status: 400 }
+    );
+  }
+
+  const limites = [
+    { valor: encargos, casas: 2, maximo: "9999999999.99" },
+    { valor: impostos, casas: 2, maximo: "9999999999.99" },
+    { valor: kwh, casas: 3, maximo: "999999999.999" },
+    { valor: valor_kwh, casas: 6, maximo: "999999.999999" },
+    { valor: desconto_percentual, casas: 2, maximo: "100" }
+  ];
+
+  if (
+    limites.some(({ valor, casas, maximo }) => {
+      const decimal = new Decimal(valor);
+
+      return decimal.decimalPlaces() > casas || decimal.gt(maximo);
+    })
+  ) {
+    throw Object.assign(
+      new Error("Valor acima do limite ou com casas decimais demais."),
+      { status: 400 }
+    );
+  }
+
+  const valorEnergia = new Decimal(kwh).times(valor_kwh);
+
+  const economiaMensal = valorEnergia
+    .times(desconto_percentual)
+    .dividedBy(100)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
+  const economiaAnual = economiaMensal.times(12);
+
+  if (economiaAnual.gt("9999999999.99")) {
+    throw Object.assign(
+      new Error("Economia acima do limite permitido."),
+      { status: 400 }
+    );
+  }
+
+  let resultado;
+
+  try {
+    resultado = await pool.query(
+      `UPDATE simulacoes
+       SET
+         uc = $1,
+         concessionaria = $2,
+         encargos = $3,
+         impostos = $4,
+         kwh = $5,
+         valor_kwh = $6,
+         desconto_percentual = $7,
+         economia_mensal = $8,
+         economia_anual = $9
+       WHERE id = $10 AND apagado = FALSE
+       RETURNING *`,
+      [
+        uc.trim(),
+        concessionaria.trim(),
+        encargos,
+        impostos,
+        kwh,
+        valor_kwh,
+        desconto_percentual,
+        economiaMensal.toFixed(2),
+        economiaAnual.toFixed(2),
+        id
+      ]
+    );
+  } catch (erro) {
+    if (
+      typeof erro === "object" &&
+      erro !== null &&
+      "code" in erro &&
+      erro.code === "23505"
+    ) {
+      throw Object.assign(
+        new Error(
+          "Já existe outra simulação para essa UC e concessionária."
+        ),
+        { status: 409 }
+      );
+    }
+
+    throw Object.assign(
+      new Error("Erro ao editar simulação."),
+      { status: 500 }
+    );
+  }
+
+  if (resultado.rows.length === 0) {
+    throw Object.assign(
+      new Error("Simulação não encontrada."),
+      { status: 404 }
+    );
+  }
+
+  return resultado.rows[0];
 }

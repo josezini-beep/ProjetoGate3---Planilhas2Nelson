@@ -20,19 +20,7 @@ app.post("/simulacoes", simulacoesController.create);
 app.get("/simulacoes/:id", simulacoesController.buscarPorId);
 
 // Lista as simulações de uma UC.
-app.get("/simulacoes/uc/:uc", async (req, res) => {
-  try {
-    const resultado = await pool.query(
-      "SELECT * FROM simulacoes WHERE uc = $1 AND apagado = FALSE ORDER BY id",
-      [req.params.uc]
-    );
-
-    res.json(resultado.rows);
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro ao buscar por UC." });
-  }
-});
+app.get("/simulacoes/uc/:uc", simulacoesController.buscarPorUc);
 
 // Lista as simulações de um CPF.
 app.get("/simulacoes/cpf/:cpf", async (req, res) => {

@@ -1,4 +1,4 @@
-import { criarSimulacaoService, listarSimulacoes, buscarSimulacaoPorId } from "../../services/simulacoes/simulacoes.service";
+import { criarSimulacaoService, listarSimulacoes, buscarSimulacaoPorId, buscarSimulacoesPorUc } from "../../services/simulacoes/simulacoes.service";
 import { Request, Response } from "express";
 import  ErroHttp  from "../../errors/erro-http";
 
@@ -14,6 +14,20 @@ export const simulacoesController = {
             erro: "Erro ao listar simulações."
             });
         }
+    },
+
+    buscarPorUc: async (req: Request, res: Response) => {
+  const uc = Array.isArray(req.params.uc)
+    ? req.params.uc[0] : req.params.uc;
+  try {
+    const resultado = await buscarSimulacoesPorUc(uc);
+    return res.json(resultado);
+ } catch (erro) {
+        console.error(erro);
+      return res.status(500).json({
+        erro: "Erro ao buscar por UC."
+       });
+      }
     },
      buscarPorId: async (req: Request, res: Response) => {
         const parametroId = Array.isArray(req.params.id)
