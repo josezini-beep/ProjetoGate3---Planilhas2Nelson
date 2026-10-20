@@ -158,3 +158,11 @@ function validacoesDadosEntradaSimulacoes(dados: DadosSimulacao){
     );
   }
 }
+
+export async function listarSimulacoes() {
+  const resultado = await pool.query(
+    "SELECT * FROM simulacoes WHERE apagado = FALSE ORDER BY id"
+  );
+
+  return resultado.rows;
+}
