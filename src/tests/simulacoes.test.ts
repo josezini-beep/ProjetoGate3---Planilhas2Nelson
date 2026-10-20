@@ -1,7 +1,7 @@
 
-import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../app";
+
 
 describe("POST /simulacoes", () => {
   it("deve retornar 400 quando os dados forem inválidos", async () => {

@@ -78,7 +78,6 @@ export const simulacoesController = {
         }
     },
     create: async (req: Request, res: Response) => {
-        console.log("Controller executado!");
         try {
             const resultado = await criarSimulacaoService.create(req.body);  
             return res.status(200).json(resultado);      
