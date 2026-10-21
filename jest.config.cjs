@@ -1,3 +1,4 @@
+
 module.exports = {
   testEnvironment: "node",
 
@@ -12,5 +13,14 @@ module.exports = {
 
   transform: {
     "^.+\\.tsx?$": "babel-jest"
-  }
+  },
+
+  collectCoverageFrom: [
+    "src/**/*.ts",
+    "!src/**/*.test.ts"
+  ],
+
+  coverageDirectory: "coverage",
+
+  coverageReporters: ["text", "html"]
 };
