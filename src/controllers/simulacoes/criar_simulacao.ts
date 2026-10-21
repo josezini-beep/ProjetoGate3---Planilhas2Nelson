@@ -4,6 +4,7 @@ import  ErroHttp  from "../../errors/erro-http";
 
 
 export const simulacoesController = {
+    
      editar: async (req: Request, res: Response) => {
         const parametroId = Array.isArray(req.params.id)
             ? req.params.id[0]

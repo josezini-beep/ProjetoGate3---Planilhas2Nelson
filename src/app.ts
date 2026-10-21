@@ -4,6 +4,8 @@ import { clientesController } from "./controllers/clientes/clientes.controller";
 
 const app = express();
 
+app.use(express.json());
+
 // Lista todas as simulações.
 app.get("/simulacoes", simulacoesController.listar);
 
@@ -28,15 +30,10 @@ app.delete("/simulacoes/:id", simulacoesController.excluir);
 
 // Importar lista de clientes
 
-app.post(
-  "/clientes/importar",
-  clientesController.importar
-);
+app.post("/clientes/importar",clientesController.importar);
 
 // consultar um cliente importado
 
-app.get(
-  "/clientes/importacoes/:id",
-  clientesController.consultarImportacao
-);
+app.get("/clientes/importacoes/:id",clientesController.consultarImportacao);
+
 export default app;

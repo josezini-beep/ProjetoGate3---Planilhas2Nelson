@@ -24,10 +24,11 @@
     "vitest": "^5.0.5"
   },
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "npm run build && node dist/server.js",
     "watch": "tsc -w",
     "build": "tsc -p tsconfig.json",
     "test": "jest",
-    "test:watch "jest"
-  }
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+}
 }
