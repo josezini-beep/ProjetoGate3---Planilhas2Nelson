@@ -1,10 +1,10 @@
 
 import request from "supertest";
-import app from "../app";
+import app from "../../app";
 import {
   importarClientes,
   consultarImportacao as consultarImportacaoService,
-} from "../services/clientes/clientes.service";
+} from "../../services/clientes/clientes.service";
 
 jest.mock("../services/clientes/clientes.service", () => ({
   importarClientes: jest.fn(),

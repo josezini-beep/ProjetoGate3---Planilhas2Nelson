@@ -1,5 +1,5 @@
 
-import pool from "../../db";
+import pool from "../../db/db";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";

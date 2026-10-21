@@ -1,5 +1,5 @@
 import app from "./app";
-import pool from "./db";
+import pool from "./db/db";
 
 async function iniciar() {
   try {

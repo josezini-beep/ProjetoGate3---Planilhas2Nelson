@@ -1,11 +1,11 @@
 
 import request from "supertest";
-import app from "../app";
+import app from "../../app";
 import {
   listarSimulacoes,
   criarSimulacaoService
-} from "../services/simulacoes/simulacoes.service";
-import ErroHttp from "../errors/erro-http";
+} from "../../services/simulacoes/simulacoes.service";
+import ErroHttp from "../../errors/erro-http";
 
 jest.mock("../services/simulacoes/simulacoes.service", () => ({
   criarSimulacaoService: {

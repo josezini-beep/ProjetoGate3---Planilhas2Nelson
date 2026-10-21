@@ -1,4 +1,4 @@
-import pool from "../../db";
+import pool from "../../db/db";
 import Decimal from "decimal.js";
 import ErroHttp from "../../errors/erro-http";
 
