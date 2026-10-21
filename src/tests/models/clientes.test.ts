@@ -1,4 +1,3 @@
-
 import request from "supertest";
 import app from "../../app";
 import {
@@ -6,12 +5,12 @@ import {
   consultarImportacao as consultarImportacaoService,
 } from "../../services/clientes/clientes.service";
 
-jest.mock("../services/clientes/clientes.service", () => ({
+jest.mock("../../services/clientes/clientes.service", () => ({
   importarClientes: jest.fn(),
   consultarImportacao: jest.fn(),
 }));
 
-const servico = require("../services/clientes/clientes.service");
+const servico = require("../../services/clientes/clientes.service");
 
 describe("POST /clientes/importar", () => {
   beforeEach(() => {

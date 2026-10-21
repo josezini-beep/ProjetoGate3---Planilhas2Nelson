@@ -1,13 +1,12 @@
-
 import request from "supertest";
 import app from "../../app";
 import {
   listarSimulacoes,
-  criarSimulacaoService
+  criarSimulacaoService,
 } from "../../services/simulacoes/simulacoes.service";
 import ErroHttp from "../../errors/erro-http";
 
-jest.mock("../services/simulacoes/simulacoes.service", () => ({
+jest.mock("../../services/simulacoes/simulacoes.service", () => ({
   criarSimulacaoService: {
     create: jest.fn(),
   },
@@ -25,7 +24,7 @@ const {
   buscarSimulacoesPorCpf,
   editarSimulacao,
   excluirSimulacao,
-} = require("../services/simulacoes/simulacoes.service");
+} = require("../../services/simulacoes/simulacoes.service");
 
 // GET /simulacoes
 describe("GET /simulacoes", () => {
