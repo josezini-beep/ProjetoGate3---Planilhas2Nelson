@@ -5,40 +5,40 @@ import  ErroHttp  from "../../errors/erro-http";
 
 export const simulacoesController = {
     
-editar: async (req: Request, res: Response) => {
-    const parametroId = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+    editar: async (req: Request, res: Response) => {
+        const parametroId = Array.isArray(req.params.id)
+            ? req.params.id[0]
+            : req.params.id;
 
-    const id = Number(parametroId);
+        const id = Number(parametroId);
 
-    if (!Number.isInteger(id) || id <= 0 || id > 2147483647) {
-        return res.status(400).json({
-            erro: "ID inválido."
-        });
-    }
-
-    try {
-        const resultado = await editarSimulacao(id, req.body);
-
-        if (!resultado) {
-            return res.status(404).json({
-                erro: "Simulação não encontrada."
+        if (!Number.isInteger(id) || id <= 0 || id > 2147483647) {
+            return res.status(400).json({
+                erro: "ID inválido."
             });
         }
 
-        return res.status(200).json(resultado);
+        try {
+            const resultado = await editarSimulacao(id, req.body);
 
-    } catch (erro) {
-        const falha = erro as Error & { status?: number };
+            if (!resultado) {
+                return res.status(404).json({
+                    erro: "Simulação não encontrada."
+                });
+            }
 
-        console.error(erro);
+            return res.status(200).json(resultado);
 
-        return res.status(falha.status ?? 500).json({
-            erro: falha.message || "Erro ao editar simulação."
-        });
-    }
-},
+        } catch (erro) {
+            const falha = erro as Error & { status?: number };
+
+            console.error(erro);
+
+            return res.status(falha.status ?? 500).json({
+                erro: falha.message || "Erro ao editar simulação."
+            });
+        }
+    },
     listar: async (_req: Request, res: Response) => {
         try {
             const resultado = await listarSimulacoes();

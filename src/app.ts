@@ -23,7 +23,7 @@ app.get("/simulacoes/uc/:uc", simulacoesController.buscarPorUc);
 app.get("/simulacoes/cpf/:cpf", simulacoesController.buscarPorCpf); 
 
 // Edita uma simulação pelo ID.
-app.put("/simulacoes/:id", simulacoesController.editar);
+app.patch("/simulacoes/:id", simulacoesController.editar);
 
 //exlui uma simulação pelo id
 app.delete("/simulacoes/:id", simulacoesController.excluir);

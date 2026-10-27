@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const criar_simulacao_1 = require("./controllers/simulacoes/criar_simulacao");
 const clientes_controller_1 = require("./controllers/clientes/clientes.controller");
-const NovoController_1 = __importDefault(require("./controllers/pasta/NovoController"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 // Lista todas as simulações.
@@ -27,5 +26,4 @@ app.delete("/simulacoes/:id", criar_simulacao_1.simulacoesController.excluir);
 app.post("/clientes/importar", clientes_controller_1.clientesController.importar);
 // consultar um cliente importado
 app.get("/clientes/importacoes/:id", clientes_controller_1.clientesController.consultarImportacao);
-app.post("/novo/create", NovoController_1.default.create);
 exports.default = app;

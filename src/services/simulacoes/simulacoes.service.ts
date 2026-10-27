@@ -1,7 +1,7 @@
 import pool from "../../db/db";
 import Decimal from "decimal.js";
 import ErroHttp from "../../errors/erro-http";
-
+import prisma from "../../db/prisma";
 
 type DadosSimulacao = {
   uc: string;
@@ -161,29 +161,39 @@ function validacoesDadosEntradaSimulacoes(dados: DadosSimulacao){
 }
 
 export async function listarSimulacoes() {
-  const resultado = await pool.query(
-    "SELECT * FROM simulacoes WHERE apagado = FALSE ORDER BY id"
-  );
+    const resultado = await prisma.simulacoes.findMany({
+        where: {
+            apagado: false
+        },
+        orderBy: {
+            id: "asc"
+        }
+    });
 
-  return resultado.rows;
+    return resultado;
 }
 
 export async function buscarSimulacaoPorId(id: number) {
-  const resultado = await pool.query(
-    "SELECT * FROM simulacoes WHERE id = $1 AND apagado = FALSE",
-    [id]
-  );
-
-  return resultado.rows[0] ?? null;
+  const resultado = await prisma.simulacoes.findFirst({
+    where: {
+        id: id,
+        apagado: false
+    },
+  });
+  return resultado;
 }
 
 export async function buscarSimulacoesPorUc(uc: string) {
-  const resultado = await pool.query(
-    "SELECT * FROM simulacoes WHERE uc = $1 AND apagado = FALSE ORDER BY id",
-    [uc]
-  );
-
-  return resultado.rows;
+  const resultado = await prisma.simulacoes.findMany({
+    where: {
+        uc: uc,
+        apagado: false
+    },
+    orderBy:{
+        id: "asc"
+    }
+  });
+  return resultado;
 }
 
 export async function editarSimulacao(id: number, dados: any) {
@@ -267,33 +277,23 @@ export async function editarSimulacao(id: number, dados: any) {
   let resultado;
 
   try {
-    resultado = await pool.query(
-      `UPDATE simulacoes
-       SET
-         uc = $1,
-         concessionaria = $2,
-         encargos = $3,
-         impostos = $4,
-         kwh = $5,
-         valor_kwh = $6,
-         desconto_percentual = $7,
-         economia_mensal = $8,
-         economia_anual = $9
-       WHERE id = $10 AND apagado = FALSE
-       RETURNING *`,
-      [
-        uc.trim(),
-        concessionaria.trim(),
-        encargos,
-        impostos,
-        kwh,
-        valor_kwh,
-        desconto_percentual,
-        economiaMensal.toFixed(2),
-        economiaAnual.toFixed(2),
-        id
-      ]
-    );
+    resultado = await prisma.simulacoes.update({
+        data: {
+            uc,
+            concessionaria,
+            encargos,
+            impostos,
+            kwh,
+            valor_kwh,
+            desconto_percentual,
+            economia_mensal: economiaMensal,
+            economia_anual: economiaAnual
+        },
+        where:{
+            id
+        }
+    })
+
   } catch (erro) {
     if (
       typeof erro === "object" &&
@@ -315,37 +315,40 @@ export async function editarSimulacao(id: number, dados: any) {
     );
   }
 
-  if (resultado.rows.length === 0) {
+  if (resultado === null) {
     throw Object.assign(
       new Error("Simulação não encontrada."),
       { status: 404 }
     );
   }
 
-  return resultado.rows[0];
+  return resultado;
 }
 
 export async function buscarSimulacoesPorCpf(cpf: string) {
-  const resultado = await pool.query(
-    "SELECT * FROM simulacoes WHERE cpf = $1 AND apagado = FALSE ORDER BY id",
-    [cpf]
-  );
-
-  return resultado.rows;
+  const resultado = await prisma.simulacoes.findMany({
+    where: {
+        cpf: cpf,
+        apagado: false
+    },
+    orderBy:{
+        id: "asc"
+    }
+  });
+  return resultado;
 }
 
 export async function excluirSimulacao(id: number) {
-  const resultado = await pool.query(
-    `UPDATE simulacoes
-     SET apagado = TRUE
-     WHERE id = $1 AND apagado = FALSE
-     RETURNING id`,
-    [id]
-  );
 
-  if (resultado.rows.length === 0) {
-    return null;
-  }
+    const resultado = await prisma.simulacoes.update({
+        where: {
+            id: id,
+            apagado: false
+        },
+        data: {
+            apagado: true
+        }
+    })
 
-  return resultado.rows[0];
+  return resultado;
 }
