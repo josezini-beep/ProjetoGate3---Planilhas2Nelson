@@ -138,9 +138,6 @@ describe("Service de simulações", () => {
         }
     });
     });
-    it("deve retornar 200 quando editar corretamente",async( =>{
-        
-    }))
  
 });
 
